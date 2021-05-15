@@ -50,7 +50,16 @@ class FoodDataset(Dataset):
 
     def _preprocess(self, img: 'numpy.array'):
         img = cv2.resize(img, self.size, interpolation = cv2.INTER_AREA)
-        img = img / 255
+        
+        # image normalization (by channel)
+        g_max, g_min = img[:, :, 0].max(), img[:, :, 0].min()
+        b_max, b_min = img[:, :, 1].max(), img[:, :, 1].min()
+        r_max, r_min = img[:, :, 2].max(), img[:, :, 2].min()
+
+        img[:, :, 0] = (img[:, :, 0] - g_min) / (g_max - g_min)
+        img[:, :, 1] = (img[:, :, 1] - b_min) / (b_max - b_min)
+        img[:, :, 2] = (img[:, :, 2] - r_min) / (r_max - r_min)
+        
         img = img.transpose((2,0,1))
         return img
     
