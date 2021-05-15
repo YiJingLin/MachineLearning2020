@@ -15,8 +15,8 @@ import torch.optim as optim
 
 data_dir = './data/food-11/'
 model_name, size = 'resnext50_32x4d', (224, 224)
-batch_size = 20
-n_epoch = 100
+batch_size = 24
+n_epoch = 1
 
 train_img_paths = glob.glob(os.path.join(data_dir, 'training', '*.jpg'))
 valid_img_paths = glob.glob(os.path.join(data_dir, 'validation', '*.jpg'))
@@ -51,14 +51,16 @@ class FoodDataset(Dataset):
     def _preprocess(self, img: 'numpy.array'):
         img = cv2.resize(img, self.size, interpolation = cv2.INTER_AREA)
         
-        # image normalization (by channel)
-        g_max, g_min = img[:, :, 0].max(), img[:, :, 0].min()
-        b_max, b_min = img[:, :, 1].max(), img[:, :, 1].min()
-        r_max, r_min = img[:, :, 2].max(), img[:, :, 2].min()
+        img = img / 255
+        
+#         # min-max normalization (by channel)
+#         g_max, g_min = img[:, :, 0].max(), img[:, :, 0].min()
+#         b_max, b_min = img[:, :, 1].max(), img[:, :, 1].min()
+#         r_max, r_min = img[:, :, 2].max(), img[:, :, 2].min()
 
-        img[:, :, 0] = (img[:, :, 0] - g_min) / (g_max - g_min)
-        img[:, :, 1] = (img[:, :, 1] - b_min) / (b_max - b_min)
-        img[:, :, 2] = (img[:, :, 2] - r_min) / (r_max - r_min)
+#         img[:, :, 0] = (img[:, :, 0] - g_min) / (g_max - g_min)
+#         img[:, :, 1] = (img[:, :, 1] - b_min) / (b_max - b_min)
+#         img[:, :, 2] = (img[:, :, 2] - r_min) / (r_max - r_min)
         
         img = img.transpose((2,0,1))
         return img
@@ -157,13 +159,13 @@ for epoch in range(n_epoch):
         valid_running_loss += loss.item()
         valid_n_time += 1
         
-        n_accuracy += (preds.argmax(-1) == labels).sum()
+        n_accuracy += (preds.argmax(-1) == labels).sum().item()
         n_valid += inputs.shape[0]
     
     train_loss = train_running_loss / train_n_time
     valid_loss = valid_running_loss / valid_n_time
     accuracy = n_accuracy / n_valid
-    print('epoch: {}, train_loss: {:.6f}, valid_loss: {:.6f}, valid_acc: {:.2f}' \
+    print('epoch: {}, train_loss: {:.6f}, valid_loss: {:.6f}, valid_acc: {:.2f}%' \
           .format(epoch, train_loss, valid_loss, 100 * accuracy))
     
     history['train_loss'].append(train_loss)
@@ -173,6 +175,7 @@ for epoch in range(n_epoch):
     if accuracy > best_accuracy:
         best_accuracy = accuracy
         torch.save(model.state_dict(), model_name + '.weights.pth')
+        print('[INFO] New highest accuracy: {:.2f}%, weights saved.'.format(100 * best_accuracy))
         
 with open(model_name + '.history.json', 'w') as file:
     json.dump(history, file)
